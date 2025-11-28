@@ -100,9 +100,9 @@ let tickCount = 0;
 
 // Generate a narrative event (cycles through calm events)
 function generateEvent(): NarrativeEvent | undefined {
-  // Generate event every ~6 ticks (every 3 seconds at 500ms intervals)
+  // Generate event every ~30 ticks (every 3 seconds at 100ms intervals)
   tickCount++;
-  if (tickCount < 6) return undefined;
+  if (tickCount < 30) return undefined;
   tickCount = 0;
 
   const template = CALM_EVENTS[eventIndex];
@@ -126,7 +126,7 @@ function generateEvent(): NarrativeEvent | undefined {
   };
 }
 
-// The heartbeat - one truth, repeated
+// The heartbeat - calm but breathing
 const HEARTBEAT_SIGNALS: SignalMetrics = {
   fundingRate: 0.01,
   liquidationRisk: 0.1,
@@ -141,32 +141,49 @@ const HEARTBEAT_AUTHENTICITY: AuthenticityMetrics = {
   organicRatio: 0.95,
 };
 
-const HEARTBEAT: Omit<SentimentReading, 'timestamp' | 'narrative'> = {
-  score: 0.45,
-  momentum: 0,
-  confidence: 0.82,
-  regime: 'calm' as Regime,
-  regimeProbability: 0.95,
-  attribution: {
-    social: 0.3,
-    onchain: 0.5,
-    microstructure: 0.2,
-  },
-  signals: HEARTBEAT_SIGNALS,
-  authenticity: HEARTBEAT_AUTHENTICITY,
-  model: 'CryptoBERT-Fusion-v1',
-};
+// State for smooth breathing motion
+let baseScore = 0.45;
+let breathPhase = 0;
 
 export function generateReading(): SentimentReading {
+  // Smooth breathing motion - smaller increments for fluid animation
+  breathPhase += 0.03; // Much smaller step = smoother
+  
+  // Gentle sinusoidal drift
+  const scoreDrift = Math.sin(breathPhase) * 0.06;
+  const momentumDrift = Math.cos(breathPhase * 0.8) * 0.08;
+  
+  // Tiny random walk for organic feel (smaller since updates are faster)
+  baseScore += (Math.random() - 0.5) * 0.003;
+  baseScore = Math.max(0.3, Math.min(0.6, baseScore)); // Keep it in calm range
+  
+  const score = baseScore + scoreDrift;
+  const momentum = momentumDrift;
+  
   return {
-    ...HEARTBEAT,
     timestamp: Date.now(),
+    score: Math.max(-1, Math.min(1, score)),
+    momentum,
+    confidence: 0.82 + Math.sin(breathPhase * 0.5) * 0.05,
+    regime: 'calm' as Regime,
+    regimeProbability: 0.95,
+    attribution: {
+      social: 0.3 + Math.sin(breathPhase * 0.3) * 0.05,
+      onchain: 0.5 + Math.cos(breathPhase * 0.3) * 0.05,
+      microstructure: 0.2,
+    },
+    signals: {
+      ...HEARTBEAT_SIGNALS,
+      whaleMovement: 0.5 + Math.sin(breathPhase * 0.2) * 0.1,
+    },
+    authenticity: HEARTBEAT_AUTHENTICITY,
     narrative: generateEvent(),
+    model: 'CryptoBERT-Fusion-v1',
   };
 }
 
-// Stream generator - 500ms heartbeat
-export function createSentimentStream(intervalMs: number = 500): {
+// Stream generator - 100ms for smooth animation
+export function createSentimentStream(intervalMs: number = 100): {
   subscribe: (callback: (reading: SentimentReading) => void) => void;
   unsubscribe: () => void;
   getLatest: () => SentimentReading;
@@ -194,21 +211,21 @@ export function createSentimentStream(intervalMs: number = 500): {
   };
 }
 
-// Generate historical data - flat line of calm with some past events
+// Generate historical data - gentle breathing history
 export function generateHistory(points: number = 200): SentimentReading[] {
   const history: SentimentReading[] = [];
   const now = Date.now();
   
-  // Reset event state for history
+  // Reset state for history
   eventIndex = 0;
   tickCount = 0;
+  breathPhase = 0;
+  baseScore = 0.45;
   
   for (let i = 0; i < points; i++) {
-    history.push({
-      ...HEARTBEAT,
-      timestamp: now - (points - i) * 500,
-      narrative: generateEvent(),
-    });
+    const reading = generateReading();
+    reading.timestamp = now - (points - i) * 500;
+    history.push(reading);
   }
   
   return history;

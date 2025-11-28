@@ -9,17 +9,18 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { SentimentReading, TrailPoint, Regime, NarrativeEvent } from '../../types/sentiment';
+import type { SentimentReading, TrailPoint, NarrativeEvent } from '../../types/sentiment';
 import { getRegimeColor } from '../../types/sentiment';
 
 // Cohort types for overlay system
 export type Cohort = 'all' | 'retail' | 'developer' | 'media' | 'whale';
 
-interface CohortTrail {
-  cohort: Cohort;
-  points: TrailPoint[];
-  color: string;
-}
+// CohortTrail interface reserved for future cohort overlay feature
+// interface CohortTrail {
+//   cohort: Cohort;
+//   points: TrailPoint[];
+//   color: string;
+// }
 
 interface PhasePortraitProps {
   reading: SentimentReading;
@@ -82,14 +83,18 @@ export function PhasePortrait({
     return ((1 - normalizedMomentum) / 2) * (height - 80) + 40;
   }, [height]);
 
-  // Convert canvas to data coordinates (for hover detection)
-  const toDataX = useCallback((canvasX: number) => {
+  // Convert canvas to data coordinates (for hover detection) - reserved for future interaction
+  const _toDataX = useCallback((canvasX: number) => {
     return ((canvasX - 40) / (width - 80)) * 2 - 1;
   }, [width]);
 
-  const toDataY = useCallback((canvasY: number) => {
+  const _toDataY = useCallback((canvasY: number) => {
     return (1 - ((canvasY - 40) / (height - 80)) * 2) / 2;
   }, [height]);
+  
+  // Suppress unused variable warnings for future use
+  void _toDataX;
+  void _toDataY;
   
   // Filter history by time range if provided
   const filteredHistory = timeRange 
@@ -444,8 +449,8 @@ function drawGrid(ctx: CanvasRenderingContext2D, width: number, height: number) 
 
 function drawEventHorizon(
   ctx: CanvasRenderingContext2D, 
-  width: number, 
-  height: number,
+  _width: number, 
+  _height: number,
   toCanvasX: (v: number) => number,
   toCanvasY: (v: number) => number
 ) {

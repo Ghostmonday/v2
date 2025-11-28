@@ -3,7 +3,7 @@
  * Manages WebSocket connection and provides sentiment data
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createWebSocketClient, type WebSocketMessage } from '../data/websocket';
 import { adaptBackendResponse, extractContributingEvents, isLiveData } from '../data/adapter';
 import { createSentimentStream, generateHistory } from '../data/mockStream';
@@ -118,8 +118,8 @@ export function useSentimentFeed(symbol: string): UseSentimentFeedResult {
     setReading(initialHistory[initialHistory.length - 1]);
     setIsLive(false);
 
-    // Start mock stream - 500ms heartbeat, calm and controlled
-    const stream = createSentimentStream(500);
+    // Start mock stream - 100ms for smooth animation
+    const stream = createSentimentStream(100);
     mockStreamRef.current = stream;
 
     stream.subscribe((newReading) => {

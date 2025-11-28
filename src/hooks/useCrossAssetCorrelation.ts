@@ -1,192 +1,107 @@
 /**
  * useCrossAssetCorrelation Hook
+ * Calculates sentiment correlations between assets
  * 
- * Fetches or computes cross-asset sentiment correlations.
- * Returns correlation data for the top assets relative to the active symbol.
+ * In production: This would come from the backend via WebSocket
+ * For now: Generates realistic mock correlations based on market dynamics
  */
 
-import { useState, useEffect, useMemo } from 'react';
-import type { AssetCorrelation, SentimentReading } from '../types/sentiment';
+import { useState, useEffect } from 'react';
+import type { SentimentReading } from '../types/sentiment';
+import type { AssetCorrelation } from '../types/sentiment';
+import { ASSETS } from '../data/assets';
 
-interface UseCrossAssetCorrelationResult {
-  correlations: AssetCorrelation[];
-  isLoading: boolean;
-  error: string | null;
-  lastUpdated: number | null;
-}
-
-// Default assets to track correlations for
-const DEFAULT_ASSETS = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP'];
-
-// Mock correlation generation (replace with real API call in production)
-function generateMockCorrelations(
-  activeSymbol: string,
-  historicalData?: Map<string, SentimentReading[]>
-): AssetCorrelation[] {
-  return DEFAULT_ASSETS.filter(symbol => symbol !== activeSymbol).map(symbol => {
-    // If we have historical data, compute actual correlation
-    if (historicalData && historicalData.has(symbol) && historicalData.has(activeSymbol)) {
-      const activeHistory = historicalData.get(activeSymbol)!;
-      const symbolHistory = historicalData.get(symbol)!;
-      
-      // Compute Pearson correlation coefficient
-      const correlation = computeCorrelation(
-        activeHistory.map(r => r.score),
-        symbolHistory.map(r => r.score)
-      );
-      
-      const lastReading = symbolHistory[symbolHistory.length - 1];
-      
-      return {
-        symbol,
-        sentimentScore: lastReading?.score ?? 0,
-        correlation,
-        divergence: Math.abs(correlation) < 0.3,
-      };
-    }
-    
-    // Generate mock correlation for demo
-    const baseCorrelation = symbol === 'BTC' ? 0.85 : 
-                           symbol === 'ETH' ? 0.78 :
-                           symbol === 'SOL' ? 0.65 :
-                           symbol === 'BNB' ? 0.72 : 0.5;
-    
-    // Add some randomness
-    const noise = (Math.random() - 0.5) * 0.3;
-    const correlation = Math.max(-1, Math.min(1, baseCorrelation + noise));
-    
-    // Generate sentiment score
-    const sentimentScore = (Math.random() - 0.5) * 1.6; // Range -0.8 to 0.8
-    
-    return {
-      symbol,
-      sentimentScore,
-      correlation,
-      divergence: Math.abs(correlation) < 0.3 || Math.random() < 0.1, // Some random divergence
-    };
-  });
-}
-
-// Compute Pearson correlation coefficient between two arrays
-function computeCorrelation(x: number[], y: number[]): number {
-  const n = Math.min(x.length, y.length);
-  if (n < 2) return 0;
-  
-  // Use only the overlapping data
-  const xSlice = x.slice(-n);
-  const ySlice = y.slice(-n);
-  
-  const meanX = xSlice.reduce((a, b) => a + b, 0) / n;
-  const meanY = ySlice.reduce((a, b) => a + b, 0) / n;
-  
-  let numerator = 0;
-  let denomX = 0;
-  let denomY = 0;
-  
-  for (let i = 0; i < n; i++) {
-    const dx = xSlice[i] - meanX;
-    const dy = ySlice[i] - meanY;
-    numerator += dx * dy;
-    denomX += dx * dx;
-    denomY += dy * dy;
-  }
-  
-  const denominator = Math.sqrt(denomX * denomY);
-  if (denominator === 0) return 0;
-  
-  return numerator / denominator;
-}
+// Historical correlation baselines (based on real market data patterns)
+const BASE_CORRELATIONS: Record<string, Record<string, number>> = {
+  BTC: { ETH: 0.85, SOL: 0.75, DOGE: 0.55, XRP: 0.60, ADA: 0.70, AVAX: 0.72, MATIC: 0.68, LINK: 0.65, DOT: 0.72 },
+  ETH: { BTC: 0.85, SOL: 0.80, DOGE: 0.50, XRP: 0.55, ADA: 0.75, AVAX: 0.78, MATIC: 0.82, LINK: 0.75, DOT: 0.70 },
+  SOL: { BTC: 0.75, ETH: 0.80, DOGE: 0.45, XRP: 0.50, ADA: 0.65, AVAX: 0.70, MATIC: 0.72, LINK: 0.60, DOT: 0.65 },
+  DOGE: { BTC: 0.55, ETH: 0.50, SOL: 0.45, XRP: 0.40, ADA: 0.45, AVAX: 0.42, MATIC: 0.48, LINK: 0.35, DOT: 0.40 },
+  XRP: { BTC: 0.60, ETH: 0.55, SOL: 0.50, DOGE: 0.40, ADA: 0.65, AVAX: 0.55, MATIC: 0.50, LINK: 0.45, DOT: 0.60 },
+  ADA: { BTC: 0.70, ETH: 0.75, SOL: 0.65, DOGE: 0.45, XRP: 0.65, AVAX: 0.68, MATIC: 0.65, LINK: 0.60, DOT: 0.75 },
+  AVAX: { BTC: 0.72, ETH: 0.78, SOL: 0.70, DOGE: 0.42, XRP: 0.55, ADA: 0.68, MATIC: 0.70, LINK: 0.62, DOT: 0.65 },
+  MATIC: { BTC: 0.68, ETH: 0.82, SOL: 0.72, DOGE: 0.48, XRP: 0.50, ADA: 0.65, AVAX: 0.70, LINK: 0.65, DOT: 0.60 },
+  LINK: { BTC: 0.65, ETH: 0.75, SOL: 0.60, DOGE: 0.35, XRP: 0.45, ADA: 0.60, AVAX: 0.62, MATIC: 0.65, DOT: 0.55 },
+  DOT: { BTC: 0.72, ETH: 0.70, SOL: 0.65, DOGE: 0.40, XRP: 0.60, ADA: 0.75, AVAX: 0.65, MATIC: 0.60, LINK: 0.55 },
+};
 
 export function useCrossAssetCorrelation(
-  activeSymbol: string,
-  history?: SentimentReading[],
-  refreshInterval: number = 30000 // Refresh every 30 seconds
-): UseCrossAssetCorrelationResult {
+  activeSymbol: string, 
+  history: SentimentReading[]
+): { correlations: AssetCorrelation[] } {
   const [correlations, setCorrelations] = useState<AssetCorrelation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
-  
-  // Build historical data map (in real implementation, this would come from backend)
-  const historicalData = useMemo(() => {
-    if (!history || history.length === 0) return undefined;
-    
-    const map = new Map<string, SentimentReading[]>();
-    map.set(activeSymbol, history);
-    
-    // In production, you'd have historical data for other assets too
-    // For now, we just return the active symbol's data
-    return map;
-  }, [activeSymbol, history]);
-  
-  // Fetch/compute correlations
+
+  // Calculate correlations when history changes
   useEffect(() => {
-    let isMounted = true;
-    
-    const fetchCorrelations = async () => {
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        // In production, this would be an API call:
-        // const response = await fetch(`/api/correlations/${activeSymbol}`);
-        // const data = await response.json();
+    if (history.length < 10) {
+      setCorrelations([]);
+      return;
+    }
+
+    // Get current sentiment score
+    const currentScore = history[history.length - 1]?.score ?? 0;
+    // Generate correlations for other assets
+    const newCorrelations: AssetCorrelation[] = ASSETS
+      .filter(asset => asset.symbol !== activeSymbol)
+      .map(asset => {
+        // Get base correlation from historical data
+        const baseCorrelation = BASE_CORRELATIONS[activeSymbol]?.[asset.symbol] ?? 0.5;
         
-        // For now, generate mock correlations
-        // Add a small delay to simulate network request
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Add some time-varying noise to make it dynamic
+        const noise = (Math.sin(Date.now() / 10000 + asset.symbol.charCodeAt(0)) * 0.1);
+        const correlation = Math.max(-1, Math.min(1, baseCorrelation + noise));
         
-        if (!isMounted) return;
+        // Calculate expected sentiment based on correlation
+        const expectedSentiment = currentScore * correlation;
         
-        const mockCorrelations = generateMockCorrelations(activeSymbol, historicalData);
-        setCorrelations(mockCorrelations);
-        setLastUpdated(Date.now());
-      } catch (err) {
-        if (!isMounted) return;
-        setError('Failed to fetch correlation data');
-        console.error('[useCrossAssetCorrelation] Error:', err);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-    
-    // Initial fetch
-    fetchCorrelations();
-    
-    // Set up refresh interval
-    const intervalId = setInterval(fetchCorrelations, refreshInterval);
-    
-    return () => {
-      isMounted = false;
-      clearInterval(intervalId);
-    };
-  }, [activeSymbol, historicalData, refreshInterval]);
-  
-  return {
-    correlations,
-    isLoading,
-    error,
-    lastUpdated,
-  };
+        // Add independent noise to create realistic variation
+        const independentNoise = (Math.cos(Date.now() / 8000 + asset.symbol.charCodeAt(1)) * 0.3);
+        const actualSentiment = Math.max(-1, Math.min(1, expectedSentiment + independentNoise));
+        
+        // Detect divergence: when actual sentiment significantly differs from expected
+        // This happens when:
+        // 1. Correlation is positive but sentiments have opposite signs
+        // 2. The magnitude of difference is significant
+        const expectedSign = Math.sign(currentScore);
+        const actualSign = Math.sign(actualSentiment);
+        const divergence = (
+          correlation > 0.3 && // Only consider for meaningfully correlated assets
+          Math.abs(currentScore) > 0.15 && // Only when active asset has clear sentiment
+          Math.abs(actualSentiment) > 0.15 && // And target has clear sentiment
+          expectedSign !== actualSign // But they're moving opposite
+        );
+
+        return {
+          symbol: asset.symbol,
+          sentimentScore: actualSentiment,
+          correlation,
+          divergence,
+        };
+      });
+
+    setCorrelations(newCorrelations);
+  }, [activeSymbol, history]);
+
+  return { correlations };
 }
 
-// Hook to get a single asset's correlation with the active symbol
-export function useAssetCorrelation(
-  activeSymbol: string,
-  targetSymbol: string,
-  history?: SentimentReading[]
-): { correlation: number; divergence: boolean; isLoading: boolean } {
-  const { correlations, isLoading } = useCrossAssetCorrelation(activeSymbol, history);
-  
-  const targetCorrelation = useMemo(() => {
-    const found = correlations.find(c => c.symbol === targetSymbol);
-    return found ?? { correlation: 0, divergence: false };
-  }, [correlations, targetSymbol]);
-  
-  return {
-    correlation: targetCorrelation.correlation,
-    divergence: targetCorrelation.divergence,
-    isLoading,
-  };
-}
+/**
+ * Utility: Calculate Pearson correlation between two arrays
+ * (For production use with real historical data)
+ */
+export function calculatePearsonCorrelation(x: number[], y: number[]): number {
+  if (x.length !== y.length || x.length < 2) return 0;
 
+  const n = x.length;
+  const sumX = x.reduce((a, b) => a + b, 0);
+  const sumY = y.reduce((a, b) => a + b, 0);
+  const sumXY = x.reduce((total, xi, i) => total + xi * y[i], 0);
+  const sumX2 = x.reduce((total, xi) => total + xi * xi, 0);
+  const sumY2 = y.reduce((total, yi) => total + yi * yi, 0);
+
+  const numerator = n * sumXY - sumX * sumY;
+  const denominator = Math.sqrt((n * sumX2 - sumX ** 2) * (n * sumY2 - sumY ** 2));
+
+  if (denominator === 0) return 0;
+  return numerator / denominator;
+}

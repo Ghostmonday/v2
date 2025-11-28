@@ -156,7 +156,7 @@ function drawPulseCore(
   size: number, 
   amplitude: number,
   color: { r: number; g: number; b: number },
-  beatPhase: number
+  _beatPhase: number
 ) {
   const cx = size / 2;
   const cy = size / 2;

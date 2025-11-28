@@ -31,7 +31,6 @@ const noise2D = createNoise2D();
 
 export function StreamlineFlow({ reading, width = 800, height = 500, showFieldOverlay = true }: StreamlineFlowProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fieldCanvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<FlowParticle[]>([]);
   const animationRef = useRef<number>();
   const timeRef = useRef(0);

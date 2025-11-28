@@ -4,7 +4,7 @@
  */
 
 import { motion } from 'framer-motion';
-import { ASSETS, type Asset } from '../data/assets';
+import { ASSETS } from '../data/assets';
 
 interface AssetSelectorProps {
   activeSymbol: string;

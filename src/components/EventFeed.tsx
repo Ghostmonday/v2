@@ -5,8 +5,8 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { NarrativeEvent, AttributionSource } from '../types/sentiment';
-import { getSourceColor, getToneColor } from '../types/sentiment';
+import type { NarrativeEvent } from '../types/sentiment';
+import { getToneColor } from '../types/sentiment';
 import { SHAPText } from './hud/SHAPText';
 
 interface EventFeedProps {

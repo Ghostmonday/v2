@@ -32,8 +32,9 @@ export function TimeTravel({ history, onTimeRangeChange, isActive, onToggle }: T
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   
   // Get time bounds from history
-  const minTime = history.length > 0 ? history[0].timestamp : Date.now() - presetMs['24h'];
+  const _minTime = history.length > 0 ? history[0].timestamp : Date.now() - presetMs['24h'];
   const maxTime = history.length > 0 ? history[history.length - 1].timestamp : Date.now();
+  void _minTime; // Reserved for future time navigation
   
   // Calculate current view window based on slider
   const calculateTimeRange = useCallback((value: number) => {
