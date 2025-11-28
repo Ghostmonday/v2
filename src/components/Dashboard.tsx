@@ -19,6 +19,7 @@ import { Tooltip } from './ui/Tooltip';
 import { generateCohortData } from './controls/CohortTabs';
 import { AuthenticityBadge } from './hud/AuthenticityBadge';
 import { CrossAssetMatrix } from './hud/CrossAssetMatrix';
+import { PricingTiers } from './PricingTiers';
 import type { SentimentReading } from '../types/sentiment';
 
 type LensType = 'phase' | 'flow' | 'spin';
@@ -36,6 +37,7 @@ export function Dashboard() {
   const [activeLens, setActiveLens] = useState<LensType>('phase');
   const [chaosEnabled, setChaosEnabled] = useState(true);
   const [activeCohorts] = useState<Cohort[]>(['all']);
+  const [showPricing, setShowPricing] = useState(false);
   
   const cohortData = useMemo(() => {
     if (history.length === 0) return undefined;
@@ -128,6 +130,13 @@ export function Dashboard() {
                   >
                     <span className="text-sm mr-1">⚡</span>
                     Effects {chaosEnabled ? 'On' : 'Off'}
+                  </button>
+                  <button
+                    onClick={() => setShowPricing(true)}
+                    className="btn-premium btn-ghost"
+                  >
+                    <span className="text-sm mr-1">💎</span>
+                    Upgrade
                   </button>
                   <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${
                     isLive 
@@ -489,6 +498,44 @@ export function Dashboard() {
             </div>
           </footer>
         </div>
+
+        {/* Pricing Modal */}
+        <AnimatePresence>
+          {showPricing && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] flex items-center justify-center"
+            >
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                onClick={() => setShowPricing(false)}
+              />
+              
+              {/* Modal Content */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative z-10 w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-2xl"
+              >
+                {/* Close Button */}
+                <button
+                  onClick={() => setShowPricing(false)}
+                  className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+                >
+                  ✕
+                </button>
+                <PricingTiers />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </ChaosOverlay>
   );

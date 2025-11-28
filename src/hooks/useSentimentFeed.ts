@@ -87,10 +87,13 @@ export function useSentimentFeed(symbol: string): UseSentimentFeedResult {
       if (status === 'connected') {
         reconnectAttemptsRef.current = 0;
         setError(null);
-      } else if (status === 'disconnected' && reconnectAttemptsRef.current >= 3) {
-        // Fallback to mock after 3 failed attempts
-        console.warn('[useSentimentFeed] Falling back to mock data');
-        setUseMockFallback(true);
+      } else if (status === 'disconnected') {
+        reconnectAttemptsRef.current++;
+        if (reconnectAttemptsRef.current >= 3) {
+          // Fallback to mock after 3 failed attempts
+          console.warn('[useSentimentFeed] Falling back to mock data');
+          setUseMockFallback(true);
+        }
       }
     });
 
@@ -115,8 +118,8 @@ export function useSentimentFeed(symbol: string): UseSentimentFeedResult {
     setReading(initialHistory[initialHistory.length - 1]);
     setIsLive(false);
 
-    // Start mock stream
-    const stream = createSentimentStream(100);
+    // Start mock stream - 500ms heartbeat, calm and controlled
+    const stream = createSentimentStream(500);
     mockStreamRef.current = stream;
 
     stream.subscribe((newReading) => {

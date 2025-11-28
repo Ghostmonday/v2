@@ -75,7 +75,7 @@ export function SHAPText({ text, highlights, confidence, tone, compact = false }
                         initial={{ opacity: 0, y: 5 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 5 }}
-                        className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-lab-slate border border-white/10 rounded text-[10px] whitespace-nowrap shadow-lg"
+                        className="absolute z-[9999] bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-lab-slate border border-white/10 rounded text-[10px] whitespace-nowrap shadow-lg"
                       >
                         <div className="flex items-center gap-2">
                           <span className="text-lab-frost">"{highlight.word}"</span>

@@ -269,7 +269,7 @@ function CellTooltip({
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 5 }}
-      className="absolute z-50 top-0 right-0 bg-lab-slate border border-white/10 rounded-lg p-3 shadow-xl min-w-[180px]"
+      className="absolute z-[9999] top-0 right-0 bg-lab-slate border border-white/10 rounded-lg p-3 shadow-xl min-w-[180px]"
     >
       <div className="text-xs font-bold text-white mb-2">
         {cell.isDiagonal ? `${row} Sentiment` : `${row} ↔ ${col}`}

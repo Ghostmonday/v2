@@ -30,7 +30,8 @@ export function NarrativeTooltip({ event, position, compact = false }: Narrative
           position: 'absolute',
           left: position.x,
           top: position.y,
-        } : {}}
+          zIndex: 9999,
+        } : { zIndex: 9999 }}
       >
         <div className="relative">
           {/* Chat bubble arrow */}

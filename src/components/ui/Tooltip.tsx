@@ -39,7 +39,7 @@ export function Tooltip({ title, description, position = 'top' }: TooltipProps) 
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9 }}
             className={`
-              absolute z-50 ${positionClasses[position]}
+              absolute z-[9999] ${positionClasses[position]}
               w-[280px] p-3 rounded-lg
               glass-card-elevated
               pointer-events-none
