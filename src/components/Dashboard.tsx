@@ -167,12 +167,12 @@ export function Dashboard() {
           </div>
 
           {/* Main Grid */}
-          <main className="flex-1 p-6 overflow-hidden">
-            <div className="max-w-[1920px] mx-auto h-full">
-              <div className="grid grid-cols-12 gap-6 h-full">
+          <main className="flex-1 p-4 md:p-6 overflow-y-auto overflow-x-hidden">
+            <div className="max-w-[1920px] mx-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
                 
                 {/* Left Column - Key Metrics */}
-                <div className="col-span-3 space-y-5 flex flex-col">
+                <div className="lg:col-span-3 space-y-4 md:space-y-5 flex flex-col order-2 lg:order-1">
                   {/* Signal Quality Card */}
                   <motion.div 
                     className="glass-card-elevated p-6"
@@ -311,7 +311,7 @@ export function Dashboard() {
                 </div>
                 
                 {/* Center - Main Visualization */}
-                <div className="col-span-6 flex flex-col gap-4">
+                <div className="lg:col-span-6 flex flex-col gap-4 order-1 lg:order-2">
                   {/* Lens Tabs */}
                   <div className="glass-card-elevated p-1.5 flex items-center gap-1 self-center rounded-xl">
                     {(Object.keys(lensInfo) as LensType[]).map((lens) => (
@@ -351,30 +351,30 @@ export function Dashboard() {
                         className="w-full h-full flex items-center justify-center"
                       >
                         {activeLens === 'phase' && (
-                          <PhasePortrait 
-                            reading={reading} 
-                            history={history}
-                            width={800}
-                            height={550}
-                            cohorts={activeCohorts}
-                            cohortData={cohortData}
-                            narrativeEvents={events}
-                          />
+                          <div className="w-full h-full min-h-[300px] md:min-h-[400px] lg:min-h-[500px]">
+                            <PhasePortrait 
+                              reading={reading} 
+                              history={history}
+                              cohorts={activeCohorts}
+                              cohortData={cohortData}
+                              narrativeEvents={events}
+                            />
+                          </div>
                         )}
                         {activeLens === 'flow' && (
-                          <StreamlineFlow 
-                            reading={reading}
-                            width={800}
-                            height={550}
-                            showFieldOverlay={true}
-                          />
+                          <div className="w-full h-full min-h-[300px] md:min-h-[400px] lg:min-h-[500px]">
+                            <StreamlineFlow 
+                              reading={reading}
+                              showFieldOverlay={true}
+                            />
+                          </div>
                         )}
                         {activeLens === 'spin' && (
-                          <SpinNetwork 
-                            reading={reading}
-                            width={800}
-                            height={550}
-                          />
+                          <div className="w-full h-full min-h-[300px] md:min-h-[400px] lg:min-h-[500px]">
+                            <SpinNetwork 
+                              reading={reading}
+                            />
+                          </div>
                         )}
                       </motion.div>
                     </AnimatePresence>
@@ -389,7 +389,7 @@ export function Dashboard() {
                   </motion.div>
                   
                   {/* Bottom Metrics - Grid of 4 */}
-                  <div className="grid grid-cols-4 gap-4 h-32">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                     <div className="relative">
                       <MetricCard 
                         label="Score"
@@ -436,7 +436,7 @@ export function Dashboard() {
                 </div>
                 
                 {/* Right Column - Events & Activity */}
-                <div className="col-span-3 space-y-5 flex flex-col">
+                <div className="lg:col-span-3 space-y-4 md:space-y-5 flex flex-col order-3">
                   {/* Event Feed */}
                   <motion.div 
                     initial={{ opacity: 0, x: 20 }}
