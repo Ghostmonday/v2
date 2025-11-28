@@ -1,7 +1,12 @@
 import { Dashboard } from './components/Dashboard';
+import { AssetProvider } from './context/AssetContext';
 
 function App() {
-  return <Dashboard />;
+  return (
+    <AssetProvider>
+      <Dashboard />
+    </AssetProvider>
+  );
 }
 
 export default App;

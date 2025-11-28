@@ -12,6 +12,40 @@ export type AttributionSource = 'social' | 'onchain' | 'microstructure';
 // Confidence levels for the Truth Badge
 export type ConfidenceLevel = 'clear' | 'noisy' | 'chaos';
 
+// Detected tone from NLP analysis
+export type DetectedTone = 'sarcasm' | 'sincere' | 'hype' | 'fud';
+
+// SHAP word highlight for NLP explainability
+export interface SHAPHighlight {
+  word: string;
+  contribution: number;  // -1 to +1 (red to green)
+  position: number;      // word index in summary
+}
+
+// Signal authenticity metrics (bot/shill detection)
+export interface AuthenticityMetrics {
+  score: number;           // 0.0-1.0 overall authenticity
+  botFiltered: number;     // ratio of bot content filtered
+  shillDetected: number;   // coordinated shill probability
+  organicRatio: number;    // genuine human engagement
+}
+
+// High-value microstructure signals
+export interface SignalMetrics {
+  fundingRate: number;       // Annualized funding rate (e.g., 0.01 = 1%)
+  liquidationRisk: number;   // 0.0 to 1.0 probability of cascade
+  sarcasmDetected: number;   // 0.0 to 1.0 (CryptoBERT score)
+  whaleMovement: number;     // Normalized volume of recent large txs
+}
+
+// Cross-asset correlation data
+export interface AssetCorrelation {
+  symbol: string;
+  sentimentScore: number;
+  correlation: number;      // -1 to +1 correlation with selected asset
+  divergence: boolean;      // true if sentiment diverges from price
+}
+
 // The core sentiment reading - a single point in phase space
 export interface SentimentReading {
   timestamp: number;
@@ -28,6 +62,9 @@ export interface SentimentReading {
   // Market regime
   regime: Regime;
   
+  // HMM Regime Probability (Confidence in current regime)
+  regimeProbability?: number;
+  
   // Attribution vector - what forces are driving this?
   attribution: {
     social: number;       // 0.0 to 1.0 - Twitter/Reddit influence
@@ -35,8 +72,17 @@ export interface SentimentReading {
     microstructure: number; // 0.0 to 1.0 - Algo/HFT activity
   };
   
+  // High-value microstructure signals (Opus Phase 2)
+  signals?: SignalMetrics;
+  
+  // Signal authenticity metrics (Gemini Feature 1)
+  authenticity?: AuthenticityMetrics;
+  
   // Optional narrative context
   narrative?: NarrativeEvent;
+  
+  // Model identifier (e.g., "CryptoBERT-Fusion-v1")
+  model?: string;
 }
 
 // A significant event with attribution
@@ -46,6 +92,11 @@ export interface NarrativeEvent {
   source: AttributionSource;
   impact: number;         // Magnitude of effect
   entities?: string[];    // "Elon Musk", "Binance", etc.
+  
+  // SHAP word highlights (Gemini Feature 2)
+  shapHighlights?: SHAPHighlight[];
+  nlpConfidence?: number;        // 0.0-1.0 CryptoBERT confidence
+  detectedTone?: DetectedTone;   // sarcasm/sincere/hype/fud
 }
 
 // Historical trail for phase portrait
@@ -268,5 +319,49 @@ export function getEyeState(confidence: number, regime: Regime): EyeState {
     glitching: true, 
     label: 'Chaos Detected - DO NOT TRADE' 
   };
+}
+
+// Authenticity level helpers
+export type AuthenticityLevel = 'verified' | 'mixed' | 'compromised';
+
+export function getAuthenticityLevel(score: number): AuthenticityLevel {
+  if (score >= 0.7) return 'verified';
+  if (score >= 0.4) return 'mixed';
+  return 'compromised';
+}
+
+export function getAuthenticityColor(score: number): string {
+  if (score >= 0.7) return '#10b981'; // Green
+  if (score >= 0.4) return '#f59e0b'; // Amber
+  return '#ef4444'; // Red
+}
+
+// SHAP contribution color helper
+export function getSHAPColor(contribution: number): string {
+  if (contribution > 0.3) return 'rgba(16, 185, 129, 0.4)';  // Strong positive - green
+  if (contribution > 0.1) return 'rgba(16, 185, 129, 0.2)';  // Weak positive - light green
+  if (contribution < -0.3) return 'rgba(239, 68, 68, 0.4)';  // Strong negative - red
+  if (contribution < -0.1) return 'rgba(239, 68, 68, 0.2)';  // Weak negative - light red
+  return 'transparent'; // Neutral
+}
+
+// Tone color helper
+export function getToneColor(tone: DetectedTone): string {
+  const colors: Record<DetectedTone, string> = {
+    sarcasm: '#f59e0b',    // Amber - caution
+    sincere: '#10b981',    // Green - trustworthy
+    hype: '#ec4899',       // Pink - social driven
+    fud: '#ef4444',        // Red - fear
+  };
+  return colors[tone];
+}
+
+// Correlation color helper
+export function getCorrelationColor(correlation: number): string {
+  if (correlation > 0.6) return '#10b981';   // Strong positive - green
+  if (correlation > 0.2) return '#86efac';   // Weak positive - light green
+  if (correlation < -0.6) return '#ef4444';  // Strong negative - red
+  if (correlation < -0.2) return '#fca5a5';  // Weak negative - light red
+  return '#6b7280'; // Neutral - gray
 }
 

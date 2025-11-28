@@ -4,7 +4,15 @@
  */
 
 import { createNoise2D } from 'simplex-noise';
-import type { SentimentReading, Regime, NarrativeEvent } from '../types/sentiment';
+import type { 
+  SentimentReading, 
+  Regime, 
+  NarrativeEvent, 
+  DetectedTone,
+  SHAPHighlight,
+  SignalMetrics,
+  AuthenticityMetrics 
+} from '../types/sentiment';
 
 // Initialize noise functions for organic movement
 const scoreNoise = createNoise2D();
@@ -13,19 +21,158 @@ const socialNoise = createNoise2D();
 const onchainNoise = createNoise2D();
 const microNoise = createNoise2D();
 
-// Sample narrative events
-const narrativeTemplates: Omit<NarrativeEvent, 'id'>[] = [
-  { summary: 'Large whale accumulation detected on Binance', source: 'onchain', impact: 0.3, entities: ['Binance', 'Whale'] },
-  { summary: 'Elon Musk cryptic tweet sparks speculation', source: 'social', impact: 0.4, entities: ['Elon Musk', 'Twitter'] },
-  { summary: 'Unusual options activity suggests institutional movement', source: 'microstructure', impact: 0.25, entities: ['CME', 'Options'] },
-  { summary: 'Reddit WSB sentiment shifting bullish', source: 'social', impact: 0.2, entities: ['Reddit', 'WSB'] },
-  { summary: '$50M USDT moved to exchange - potential sell pressure', source: 'onchain', impact: -0.35, entities: ['Tether', 'Exchange'] },
-  { summary: 'High-frequency trading spike detected', source: 'microstructure', impact: 0.15, entities: ['HFT', 'Algo'] },
-  { summary: 'Major influencer capitulated publicly', source: 'social', impact: -0.45, entities: ['Influencer'] },
-  { summary: 'Long liquidation cascade beginning', source: 'microstructure', impact: -0.6, entities: ['Longs', 'Cascade'] },
-  { summary: 'Dormant wallet from 2017 activated', source: 'onchain', impact: -0.2, entities: ['OG Whale'] },
-  { summary: 'Funding rate extreme positive - squeeze risk', source: 'microstructure', impact: -0.3, entities: ['Funding', 'Perps'] },
+// Sample narrative events with base data
+interface NarrativeTemplate {
+  summary: string;
+  source: 'social' | 'onchain' | 'microstructure';
+  impact: number;
+  entities: string[];
+  baseTone: DetectedTone;
+  // Words that should have strong SHAP contributions
+  keyWords: { word: string; sentiment: 'positive' | 'negative' | 'neutral' }[];
+}
+
+const narrativeTemplates: NarrativeTemplate[] = [
+  { 
+    summary: 'Large whale accumulation detected on Binance', 
+    source: 'onchain', 
+    impact: 0.3, 
+    entities: ['Binance', 'Whale'],
+    baseTone: 'sincere',
+    keyWords: [{ word: 'whale', sentiment: 'positive' }, { word: 'accumulation', sentiment: 'positive' }]
+  },
+  { 
+    summary: 'Elon Musk cryptic tweet sparks speculation', 
+    source: 'social', 
+    impact: 0.4, 
+    entities: ['Elon Musk', 'Twitter'],
+    baseTone: 'hype',
+    keyWords: [{ word: 'Elon', sentiment: 'positive' }, { word: 'cryptic', sentiment: 'neutral' }, { word: 'sparks', sentiment: 'positive' }]
+  },
+  { 
+    summary: 'Unusual options activity suggests institutional movement', 
+    source: 'microstructure', 
+    impact: 0.25, 
+    entities: ['CME', 'Options'],
+    baseTone: 'sincere',
+    keyWords: [{ word: 'institutional', sentiment: 'positive' }, { word: 'Unusual', sentiment: 'neutral' }]
+  },
+  { 
+    summary: 'Reddit WSB sentiment shifting bullish', 
+    source: 'social', 
+    impact: 0.2, 
+    entities: ['Reddit', 'WSB'],
+    baseTone: 'hype',
+    keyWords: [{ word: 'bullish', sentiment: 'positive' }, { word: 'WSB', sentiment: 'neutral' }]
+  },
+  { 
+    summary: '$50M USDT moved to exchange - potential sell pressure', 
+    source: 'onchain', 
+    impact: -0.35, 
+    entities: ['Tether', 'Exchange'],
+    baseTone: 'fud',
+    keyWords: [{ word: 'sell', sentiment: 'negative' }, { word: 'pressure', sentiment: 'negative' }, { word: '$50M', sentiment: 'negative' }]
+  },
+  { 
+    summary: 'High-frequency trading spike detected', 
+    source: 'microstructure', 
+    impact: 0.15, 
+    entities: ['HFT', 'Algo'],
+    baseTone: 'sincere',
+    keyWords: [{ word: 'spike', sentiment: 'neutral' }, { word: 'detected', sentiment: 'neutral' }]
+  },
+  { 
+    summary: 'Major influencer capitulated publicly - "I was wrong about BTC"', 
+    source: 'social', 
+    impact: -0.45, 
+    entities: ['Influencer'],
+    baseTone: 'sarcasm',
+    keyWords: [{ word: 'capitulated', sentiment: 'negative' }, { word: 'wrong', sentiment: 'negative' }]
+  },
+  { 
+    summary: 'Long liquidation cascade beginning', 
+    source: 'microstructure', 
+    impact: -0.6, 
+    entities: ['Longs', 'Cascade'],
+    baseTone: 'fud',
+    keyWords: [{ word: 'liquidation', sentiment: 'negative' }, { word: 'cascade', sentiment: 'negative' }]
+  },
+  { 
+    summary: 'Dormant wallet from 2017 activated - OG whale awakens', 
+    source: 'onchain', 
+    impact: -0.2, 
+    entities: ['OG Whale'],
+    baseTone: 'sincere',
+    keyWords: [{ word: 'Dormant', sentiment: 'negative' }, { word: 'awakens', sentiment: 'neutral' }]
+  },
+  { 
+    summary: 'Funding rate extreme positive - squeeze risk elevated', 
+    source: 'microstructure', 
+    impact: -0.3, 
+    entities: ['Funding', 'Perps'],
+    baseTone: 'fud',
+    keyWords: [{ word: 'extreme', sentiment: 'negative' }, { word: 'squeeze', sentiment: 'negative' }, { word: 'risk', sentiment: 'negative' }]
+  },
+  {
+    summary: 'Great another dip, thanks for the discount!',
+    source: 'social',
+    impact: 0.1,
+    entities: ['Community'],
+    baseTone: 'sarcasm',
+    keyWords: [{ word: 'Great', sentiment: 'negative' }, { word: 'dip', sentiment: 'negative' }, { word: 'discount', sentiment: 'positive' }]
+  },
+  {
+    summary: 'WAGMI! Community sentiment at all-time high',
+    source: 'social',
+    impact: 0.5,
+    entities: ['Community', 'Twitter'],
+    baseTone: 'hype',
+    keyWords: [{ word: 'WAGMI', sentiment: 'positive' }, { word: 'all-time', sentiment: 'positive' }, { word: 'high', sentiment: 'positive' }]
+  },
 ];
+
+// Generate SHAP highlights from template
+function generateSHAPHighlights(summary: string, keyWords: NarrativeTemplate['keyWords']): SHAPHighlight[] {
+  const words = summary.split(/\s+/);
+  const highlights: SHAPHighlight[] = [];
+  
+  words.forEach((word, position) => {
+    const cleanWord = word.replace(/[^a-zA-Z0-9$]/g, '');
+    const keyWord = keyWords.find(kw => 
+      cleanWord.toLowerCase().includes(kw.word.toLowerCase()) ||
+      kw.word.toLowerCase().includes(cleanWord.toLowerCase())
+    );
+    
+    if (keyWord) {
+      const baseContribution = keyWord.sentiment === 'positive' ? 0.4 : 
+                               keyWord.sentiment === 'negative' ? -0.4 : 0;
+      highlights.push({
+        word: cleanWord,
+        contribution: baseContribution + (Math.random() - 0.5) * 0.2,
+        position,
+      });
+    } else if (Math.random() < 0.2) {
+      // Random low-contribution words
+      highlights.push({
+        word: cleanWord,
+        contribution: (Math.random() - 0.5) * 0.15,
+        position,
+      });
+    }
+  });
+  
+  return highlights;
+}
+
+// Pick tone with some randomness
+function pickTone(baseTone: DetectedTone, impact: number): DetectedTone {
+  // 80% chance to use base tone, 20% to vary based on impact
+  if (Math.random() < 0.8) return baseTone;
+  
+  if (impact > 0.3) return 'hype';
+  if (impact < -0.3) return 'fud';
+  return Math.random() > 0.5 ? 'sincere' : 'sarcasm';
+}
 
 // State for the simulation
 let simulationTime = 0;
@@ -61,9 +208,19 @@ function generateNarrativeEvent(): NarrativeEvent | undefined {
   if (Math.random() > 0.05) return undefined;
   
   const template = narrativeTemplates[Math.floor(Math.random() * narrativeTemplates.length)];
+  const shapHighlights = generateSHAPHighlights(template.summary, template.keyWords);
+  const detectedTone = pickTone(template.baseTone, template.impact);
+  
   return {
-    ...template,
     id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    summary: template.summary,
+    source: template.source,
+    impact: template.impact,
+    entities: template.entities,
+    // Gemini Feature 2: SHAP highlights
+    shapHighlights,
+    nlpConfidence: 0.7 + Math.random() * 0.25,
+    detectedTone,
   };
 }
 
@@ -119,14 +276,44 @@ export function generateReading(): SentimentReading {
   const confidenceNoise = momentumNoise(simulationTime * 0.4, 400) * 0.2;
   const confidence = Math.max(0.1, Math.min(1, baseConfidence + confidenceNoise));
   
+  // Opus Phase 2: Signal metrics
+  const fundingRate = (rawMicro * 0.05) + (currentRegime === 'trending' ? 0.02 : 0);
+  let liquidationRisk = 0.1;
+  if (fundingRate > 0.04) liquidationRisk = 0.7 + Math.random() * 0.2;
+  if (currentRegime === 'liquidation') liquidationRisk = 0.9 + Math.random() * 0.1;
+  
+  const signals: SignalMetrics = {
+    fundingRate,
+    liquidationRisk,
+    sarcasmDetected: (rawSocial > 0.7 && Math.abs(momentum) < 0.2) ? 0.6 + Math.random() * 0.3 : 0.05 + Math.random() * 0.15,
+    whaleMovement: rawOnchain,
+  };
+  
+  // Gemini Feature 1: Authenticity metrics
+  // Lower authenticity during volatile/liquidation regimes (more bots/shills active)
+  const baseAuthenticity = currentRegime === 'volatile' || currentRegime === 'liquidation' ? 0.5 : 0.75;
+  const authenticity: AuthenticityMetrics = {
+    score: Math.min(1, Math.max(0.2, baseAuthenticity + (Math.random() - 0.5) * 0.3)),
+    botFiltered: currentRegime === 'volatile' ? 0.15 + Math.random() * 0.15 : 0.05 + Math.random() * 0.1,
+    shillDetected: currentRegime === 'volatile' ? 0.2 + Math.random() * 0.2 : 0.02 + Math.random() * 0.08,
+    organicRatio: Math.min(1, Math.max(0.5, 0.8 - (currentRegime === 'volatile' ? 0.2 : 0) + (Math.random() - 0.5) * 0.2)),
+  };
+  
+  // HMM regime probability (simulated)
+  const regimeProbability = 0.7 + Math.random() * 0.25;
+  
   return {
     timestamp: Date.now(),
     score,
     momentum,
     confidence,
     regime: currentRegime,
+    regimeProbability,
     attribution,
+    signals,
+    authenticity,
     narrative: generateNarrativeEvent(),
+    model: 'CryptoBERT-Fusion-v1',
   };
 }
 
