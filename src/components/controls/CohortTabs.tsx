@@ -192,8 +192,8 @@ export function CohortTabs({ activeCohorts, onCohortsChange }: CohortTabsProps) 
 
 // Generate mock cohort data (for demo purposes)
 export function generateCohortData(
-  baseHistory: Array<{ timestamp: number; score: number; momentum: number; regime: 'calm' | 'trending' | 'volatile' | 'liquidation' }>
-): Record<Cohort, typeof baseHistory> {
+  baseHistory: import('../../types/sentiment').SentimentReading[]
+): Record<Cohort, import('../../types/sentiment').SentimentReading[]> {
   const noise = (seed: number) => Math.sin(seed * 12.9898) * 0.1;
   
   return {

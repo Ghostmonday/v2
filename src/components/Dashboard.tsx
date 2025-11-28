@@ -4,7 +4,7 @@
  * Finalized with precision adjustments and high-end polish.
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PhasePortrait, type Cohort } from './lenses/PhasePortrait';
 import { StreamlineFlow } from './lenses/StreamlineFlow';
@@ -32,7 +32,7 @@ const lensInfo: Record<LensType, { name: string; icon: string }> = {
 
 export function Dashboard() {
   const { activeSymbol, setActiveSymbol } = useAsset();
-  const { reading, history, events, isConnected, isLive, connectionStatus } = useSentimentFeed(activeSymbol);
+  const { reading, history, events, isLive, connectionStatus } = useSentimentFeed(activeSymbol);
   const { correlations } = useCrossAssetCorrelation(activeSymbol, history);
   const [activeLens, setActiveLens] = useState<LensType>('phase');
   const [chaosEnabled, setChaosEnabled] = useState(true);
@@ -127,22 +127,28 @@ export function Dashboard() {
                   <button
                     onClick={() => setChaosEnabled(!chaosEnabled)}
                     className={`btn-premium ${chaosEnabled ? 'btn-primary' : 'btn-ghost'}`}
+                    aria-label={`Toggle chaos effects ${chaosEnabled ? 'off' : 'on'}`}
                   >
-                    <span className="text-sm mr-1">⚡</span>
+                    <span className="text-sm mr-1" aria-hidden="true">⚡</span>
                     Effects {chaosEnabled ? 'On' : 'Off'}
                   </button>
                   <button
                     onClick={() => setShowPricing(true)}
                     className="btn-premium btn-ghost"
+                    aria-label="View pricing and upgrade options"
                   >
-                    <span className="text-sm mr-1">💎</span>
+                    <span className="text-sm mr-1" aria-hidden="true">💎</span>
                     Upgrade
                   </button>
-                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${
+                  <div 
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${
                     isLive 
                       ? 'bg-[#10b981]/10 border-[#10b981]/30' 
                       : 'bg-[#f59e0b]/10 border-[#f59e0b]/30'
-                  }`}>
+                    }`}
+                    role="status"
+                    aria-label={isLive ? "System is live" : "System in demo mode"}
+                  >
                     <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-[#10b981]' : 'bg-[#f59e0b]'}`} />
                     <span className="text-xs font-medium" style={{ color: isLive ? '#10b981' : '#f59e0b' }}>
                       {isLive ? 'LIVE DATA' : 'DEMO MODE'}
@@ -545,15 +551,17 @@ export function Dashboard() {
 // SUB-COMPONENTS
 // ============================================
 
-function LogoMark() {
+const LogoMark = memo(function LogoMark() {
   return (
     <motion.div 
       className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#3b82f6] to-[#8b5cf6] p-[1px]"
       animate={{ rotate: [0, 360] }}
       transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
+      role="img"
+      aria-label="SentimentDNA Logo"
     >
       <div className="w-full h-full rounded-xl bg-[var(--bg-primary)] flex items-center justify-center backdrop-blur-sm">
-        <svg viewBox="0 0 32 32" className="w-6 h-6">
+        <svg viewBox="0 0 32 32" className="w-6 h-6" aria-hidden="true">
           <path 
             d="M8 8 C16 16 24 8 24 8 M8 24 C16 16 24 24 24 24" 
             fill="none" 
@@ -571,9 +579,9 @@ function LogoMark() {
       </div>
     </motion.div>
   );
-}
+});
 
-function HeaderStat({ label, value, color, badge }: { label: string; value: string; color: string; badge?: boolean }) {
+const HeaderStat = memo(function HeaderStat({ label, value, color, badge }: { label: string; value: string; color: string; badge?: boolean }) {
   return (
     <div className="text-center min-w-[100px]">
       <div className="text-[10px] font-bold tracking-widest text-[var(--text-tertiary)] mb-1.5 uppercase">
@@ -598,9 +606,9 @@ function HeaderStat({ label, value, color, badge }: { label: string; value: stri
       )}
     </div>
   );
-}
+});
 
-function RegimeVisual({ regime }: { regime: SentimentReading['regime'] }) {
+const RegimeVisual = memo(function RegimeVisual({ regime }: { regime: SentimentReading['regime'] }) {
   const color = getRegimeColor(regime);
   const icons = {
     calm: '🌊',
@@ -613,6 +621,8 @@ function RegimeVisual({ regime }: { regime: SentimentReading['regime'] }) {
     <div 
       className="w-12 h-12 rounded-xl flex items-center justify-center relative overflow-hidden"
       style={{ background: `${color}10`, border: `1px solid ${color}20` }}
+      role="img"
+      aria-label={`Market regime: ${regime}`}
     >
       <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at center, ${color}, transparent)` }} />
       <motion.div className="text-xl relative z-10" animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }}>
@@ -620,14 +630,14 @@ function RegimeVisual({ regime }: { regime: SentimentReading['regime'] }) {
       </motion.div>
     </div>
   );
-}
+});
 
-function RegimeBar({ regime }: { regime: SentimentReading['regime'] }) {
+const RegimeBar = memo(function RegimeBar({ regime }: { regime: SentimentReading['regime'] }) {
   const levels = ['calm', 'trending', 'volatile', 'liquidation'];
   const activeIdx = levels.indexOf(regime);
   
   return (
-    <div className="flex gap-1.5">
+    <div className="flex gap-1.5" role="progressbar" aria-valuenow={activeIdx + 1} aria-valuemin={1} aria-valuemax={4} aria-label="Regime intensity">
       {levels.map((level, i) => (
         <div
           key={level}
@@ -648,21 +658,21 @@ function RegimeBar({ regime }: { regime: SentimentReading['regime'] }) {
       ))}
     </div>
   );
-}
+});
 
-function AttributionRow({ label, value, color, icon }: { label: string; value: number; color: string; icon: string }) {
+const AttributionRow = memo(function AttributionRow({ label, value, color, icon }: { label: string; value: number; color: string; icon: string }) {
   return (
     <div>
       <div className="flex justify-between items-center mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs opacity-50">{icon}</span>
+          <span className="text-xs opacity-50" aria-hidden="true">{icon}</span>
           <span className="text-xs font-medium text-[var(--text-secondary)]">{label}</span>
         </div>
         <span className="text-xs font-mono font-bold" style={{ color }}>
           {(value * 100).toFixed(0)}%
         </span>
       </div>
-      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden" role="progressbar" aria-valuenow={value * 100} aria-valuemin={0} aria-valuemax={100} aria-label={`${label} attribution`}>
         <motion.div
           className="h-full rounded-full relative"
           style={{ background: color }}
@@ -675,21 +685,24 @@ function AttributionRow({ label, value, color, icon }: { label: string; value: n
       </div>
     </div>
   );
-}
+});
 
-function MetricCard({ label, value, trend, color, subvalue, icon }: any) {
+const MetricCard = memo(function MetricCard({ label, value, trend, color, subvalue, icon }: any) {
   return (
     <div className="metric-card flex flex-col justify-between h-full group">
       <div className="flex items-start justify-between">
         <span className="text-label group-hover:text-white transition-colors">{label}</span>
-        <span className="text-xs opacity-30 group-hover:opacity-100 transition-opacity">{icon}</span>
+        <span className="text-xs opacity-30 group-hover:opacity-100 transition-opacity" aria-hidden="true">{icon}</span>
       </div>
       
       <div>
         <div className="flex items-baseline gap-2">
           <span className="metric-large" style={{ color }}>{value}</span>
           {trend && (
-            <span className={`text-xs font-bold ${trend === 'up' ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
+            <span 
+              className={`text-xs font-bold ${trend === 'up' ? 'text-[#10b981]' : 'text-[#ef4444]'}`}
+              aria-label={trend === 'up' ? 'Trending up' : 'Trending down'}
+            >
               {trend === 'up' ? '↑' : '↓'}
             </span>
           )}
@@ -700,10 +713,10 @@ function MetricCard({ label, value, trend, color, subvalue, icon }: any) {
       </div>
     </div>
   );
-}
+});
 
 
-function ConditionPill({ label, value, type }: { label: string; value: string; type: 'success' | 'warning' | 'danger' }) {
+const ConditionPill = memo(function ConditionPill({ label, value, type }: { label: string; value: string; type: 'success' | 'warning' | 'danger' }) {
   const colors = {
     success: '#10b981',
     warning: '#f59e0b',
@@ -717,7 +730,7 @@ function ConditionPill({ label, value, type }: { label: string; value: string; t
       <span className="text-xs font-bold" style={{ color }}>{value}</span>
     </div>
   );
-}
+});
 
 function LoadingScreen() {
   return (

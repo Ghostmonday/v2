@@ -27,9 +27,14 @@ export function Tooltip({ title, description, position = 'top' }: TooltipProps) 
       <button
         onMouseEnter={() => setIsOpen(true)}
         onMouseLeave={() => setIsOpen(false)}
-        className="w-4 h-4 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-[10px] text-[var(--text-tertiary)] hover:text-white transition-colors"
+        onFocus={() => setIsOpen(true)}
+        onBlur={() => setIsOpen(false)}
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-4 h-4 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-[10px] text-[var(--text-tertiary)] hover:text-white transition-colors cursor-help"
+        aria-label={`Learn more about ${title}`}
+        aria-expanded={isOpen}
       >
-        ?
+        <span aria-hidden="true">?</span>
       </button>
 
       <AnimatePresence>
@@ -44,6 +49,7 @@ export function Tooltip({ title, description, position = 'top' }: TooltipProps) 
               glass-card-elevated
               pointer-events-none
             `}
+            role="tooltip"
           >
             <div className="text-xs font-bold text-white mb-1">{title}</div>
             <div className="text-[11px] text-[var(--text-secondary)] leading-relaxed">

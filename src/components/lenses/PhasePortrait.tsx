@@ -60,6 +60,18 @@ export function PhasePortrait({
   const [hoveredNarrative, setHoveredNarrative] = useState<NarrativeEvent | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   
+  // Refs for data that changes frequently to avoid restarting the animation loop
+  const readingRef = useRef(reading);
+  const cohortDataRef = useRef(cohortData);
+  const narrativeEventsRef = useRef(narrativeEvents);
+  const filteredHistoryRef = useRef<SentimentReading[]>([]);
+
+  useEffect(() => {
+    readingRef.current = reading;
+    cohortDataRef.current = cohortData;
+    narrativeEventsRef.current = narrativeEvents;
+  }, [reading, cohortData, narrativeEvents]);
+
   // Convert data coordinates to canvas coordinates
   const toCanvasX = useCallback((score: number) => {
     return ((score + 1) / 2) * (width - 80) + 40;
@@ -83,6 +95,10 @@ export function PhasePortrait({
   const filteredHistory = timeRange 
     ? history.filter(r => r.timestamp >= timeRange.start && r.timestamp <= timeRange.end)
     : history;
+
+  useEffect(() => {
+    filteredHistoryRef.current = filteredHistory;
+  }, [filteredHistory]);
   
   // Add current reading to trail
   useEffect(() => {
@@ -141,6 +157,12 @@ export function PhasePortrait({
     ctx.scale(dpr, dpr);
     
     const render = () => {
+      // Use refs for current data
+      const currentReading = readingRef.current;
+      const currentCohortData = cohortDataRef.current;
+      const currentNarrativeEvents = narrativeEventsRef.current;
+      const currentFilteredHistory = filteredHistoryRef.current;
+
       ctx.fillStyle = '#0a0b0f';
       ctx.fillRect(0, 0, width, height);
       
@@ -149,10 +171,10 @@ export function PhasePortrait({
       drawAttractors(ctx, toCanvasX, toCanvasY);
       
       // Draw cohort trails if provided
-      if (cohortData && cohorts.length > 1) {
+      if (currentCohortData && cohorts.length > 1) {
         cohorts.forEach(cohort => {
-          if (cohort !== 'all' && cohortData[cohort]) {
-            const cohortTrail = cohortData[cohort].map((r, i, arr) => ({
+          if (cohort !== 'all' && currentCohortData[cohort]) {
+            const cohortTrail = currentCohortData[cohort].map((r, i, arr) => ({
               x: r.score,
               y: r.momentum,
               timestamp: r.timestamp,
@@ -168,18 +190,25 @@ export function PhasePortrait({
       drawTrail(ctx, trailRef.current, toCanvasX, toCanvasY);
       
       // Draw narrative event markers
-      drawNarrativeMarkers(ctx, trailRef.current, narrativeEvents, toCanvasX, toCanvasY);
+      drawNarrativeMarkers(ctx, trailRef.current, currentNarrativeEvents, toCanvasX, toCanvasY);
       
       // Draw current position
       if (!timeRange) {
-        drawCurrentPosition(ctx, reading, toCanvasX, toCanvasY);
-      } else if (filteredHistory.length > 0) {
+        drawCurrentPosition(ctx, currentReading, toCanvasX, toCanvasY);
+      } else if (currentFilteredHistory.length > 0) {
         // In time travel mode, show last point of filtered history
-        const lastReading = filteredHistory[filteredHistory.length - 1];
+        const lastReading = currentFilteredHistory[currentFilteredHistory.length - 1];
         drawCurrentPosition(ctx, lastReading, toCanvasX, toCanvasY);
       }
       
-      // Draw hovered point highlight
+      // Draw hovered point highlight (from state, which triggers re-render anyway, but loop handles drawing)
+      // Note: Since hoveredPoint is state, changing it re-renders the component and restarts this effect.
+      // Ideally, we'd use a ref for hover state too if we wanted pure loop-driven rendering, 
+      // but for now we just want to avoid data-driven restarts.
+      // However, we can access the *latest* state via closure if we don't include it in deps? 
+      // No, that would be stale. 
+      // But since we want to avoid restarts on *reading* updates, we've achieved that.
+      // Restarts on hover are fine as they are user-driven and less frequent than data updates (100ms).
       if (hoveredPoint) {
         drawHoveredPoint(ctx, hoveredPoint, toCanvasX, toCanvasY);
       }
@@ -196,7 +225,7 @@ export function PhasePortrait({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [reading, width, height, toCanvasX, toCanvasY, cohorts, cohortData, timeRange, filteredHistory, hoveredPoint, narrativeEvents]);
+  }, [width, height, toCanvasX, toCanvasY, cohorts, timeRange, hoveredPoint]); // Removed frequent data updates from deps
   
   // Mouse interaction with narrative detection
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
