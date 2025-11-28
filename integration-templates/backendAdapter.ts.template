@@ -1,0 +1,148 @@
+/**
+ * Backend Adapter Template
+ * 
+ * Copy this file to your project and customize it to match your backend's data format.
+ * 
+ * INSTRUCTIONS:
+ * 1. Replace `YourBackendSentiment` interface with your actual backend response shape
+ * 2. Update `adaptToSentimentReading()` to map your fields correctly
+ * 3. Update `regimeMap` to match your regime naming
+ * 4. Update `mapEventCategory()` to match your event categories
+ */
+
+import type { SentimentReading, Regime, NarrativeEvent } from '../types/sentiment';
+
+// ═══════════════════════════════════════════════════════════════
+// STEP 1: Define YOUR backend's data shape
+// ═══════════════════════════════════════════════════════════════
+
+export interface YourBackendSentiment {
+  // TODO: Replace with your actual backend response structure
+  timestamp: number;
+  sentiment_value: number;      // Your naming - adjust as needed
+  velocity?: number;
+  confidence_score?: number;
+  market_state?: string;
+  sources?: {
+    twitter_sentiment?: number;
+    reddit_sentiment?: number;
+    whale_activity?: number;
+    order_flow?: number;
+  };
+  events?: Array<{
+    description: string;
+    category: string;
+    magnitude: number;
+    timestamp: number;
+  }>;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STEP 2: Map your regime names to SentimentDNA regime types
+// ═══════════════════════════════════════════════════════════════
+
+const regimeMap: Record<string, Regime> = {
+  // TODO: Update these to match your backend's regime values
+  'stable': 'calm',
+  'normal': 'calm',
+  'bullish_trend': 'trending',
+  'bearish_trend': 'trending',
+  'high_volatility': 'volatile',
+  'choppy': 'volatile',
+  'liquidation': 'liquidation',
+  'cascade': 'liquidation',
+  // Add more mappings as needed
+};
+
+// ═══════════════════════════════════════════════════════════════
+// STEP 3: Main adapter function
+// ═══════════════════════════════════════════════════════════════
+
+export function adaptToSentimentReading(data: YourBackendSentiment): SentimentReading {
+  // Normalize score to [-1, 1] range
+  const score = Math.max(-1, Math.min(1, data.sentiment_value));
+  
+  // Use provided velocity or default to 0
+  const momentum = data.velocity ?? 0;
+  
+  // Map confidence (0-1 range)
+  const confidence = Math.max(0, Math.min(1, data.confidence_score ?? 0.5));
+  
+  // Map regime (default to 'calm' if unknown)
+  const regime = regimeMap[data.market_state ?? 'normal'] ?? 'calm';
+  
+  // Calculate attribution percentages from sources
+  const sources = data.sources ?? {};
+  
+  // Sum up social sources
+  const socialRaw = (sources.twitter_sentiment ?? 0) + (sources.reddit_sentiment ?? 0);
+  
+  // On-chain sources
+  const onchainRaw = sources.whale_activity ?? 0;
+  
+  // Microstructure sources
+  const microRaw = sources.order_flow ?? 0;
+  
+  // Normalize to sum to 1.0
+  const total = socialRaw + onchainRaw + microRaw;
+  const normalizedTotal = total > 0 ? total : 1; // Avoid division by zero
+  
+  // Map narrative events (take first event if available)
+  const narrative: NarrativeEvent | undefined = data.events?.[0] ? {
+    id: `evt-${data.events[0].timestamp}-${Math.random().toString(36).slice(2, 8)}`,
+    summary: data.events[0].description,
+    source: mapEventCategory(data.events[0].category),
+    impact: Math.max(-1, Math.min(1, data.events[0].magnitude)),
+    timestamp: data.events[0].timestamp,
+  } as NarrativeEvent & { timestamp: number } : undefined;
+  
+  return {
+    timestamp: data.timestamp,
+    score,
+    momentum,
+    confidence,
+    regime,
+    attribution: {
+      social: socialRaw / normalizedTotal,
+      onchain: onchainRaw / normalizedTotal,
+      microstructure: microRaw / normalizedTotal,
+    },
+    narrative,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STEP 4: Map event categories to source types
+// ═══════════════════════════════════════════════════════════════
+
+function mapEventCategory(category: string): 'social' | 'onchain' | 'microstructure' {
+  const catLower = category.toLowerCase();
+  
+  // TODO: Update these to match your backend's event categories
+  if (['tweet', 'reddit', 'news', 'influencer', 'social', 'twitter'].includes(catLower)) {
+    return 'social';
+  }
+  
+  if (['whale', 'transfer', 'wallet', 'exchange', 'onchain', 'blockchain', 'defi'].includes(catLower)) {
+    return 'onchain';
+  }
+  
+  // Default to microstructure
+  return 'microstructure';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Helper: Validate adapter output
+// ═══════════════════════════════════════════════════════════════
+
+export function validateAdaptedReading(reading: SentimentReading): boolean {
+  return (
+    reading.score >= -1 && reading.score <= 1 &&
+    reading.confidence >= 0 && reading.confidence <= 1 &&
+    reading.attribution.social >= 0 && reading.attribution.social <= 1 &&
+    reading.attribution.onchain >= 0 && reading.attribution.onchain <= 1 &&
+    reading.attribution.microstructure >= 0 && reading.attribution.microstructure <= 1 &&
+    Math.abs(reading.attribution.social + reading.attribution.onchain + reading.attribution.microstructure - 1) < 0.01
+  );
+}
+
